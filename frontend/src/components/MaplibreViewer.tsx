@@ -373,14 +373,36 @@ const MaplibreViewer = ({ data, activeLayers, onEntityClick, flyToLocation, sele
     const onMapLoad = useCallback((e: any) => {
         const map = e.target;
 
+        // Track which images are still loading so we can retry on styleimagemissing
+        const pendingImages: Record<string, string> = {};
+
         const loadImg = (id: string, url: string) => {
             if (!map.hasImage(id)) {
+                pendingImages[id] = url;
                 const img = new Image();
                 img.crossOrigin = "anonymous";
                 img.src = url;
-                img.onload = () => map.addImage(id, img);
+                img.onload = () => {
+                    if (!map.hasImage(id)) map.addImage(id, img);
+                    delete pendingImages[id];
+                };
             }
         };
+
+        // Suppress "image not found" warnings — retry when the async load finishes
+        map.on('styleimagemissing', (ev: any) => {
+            const id = ev.id;
+            const url = pendingImages[id];
+            if (url) {
+                const img = new Image();
+                img.crossOrigin = "anonymous";
+                img.src = url;
+                img.onload = () => {
+                    if (!map.hasImage(id)) map.addImage(id, img);
+                    delete pendingImages[id];
+                };
+            }
+        });
 
         // Legacy generic plane icons (still used as fallbacks)
         loadImg('svgPlaneCyan', svgPlaneCyan);
