@@ -101,10 +101,23 @@ const LEGEND: LegendCategory[] = [
         name: "TRACKED AIRCRAFT (ALERT)",
         color: "text-pink-400 border-pink-500/30",
         items: [
-            { svg: airliner("#FF1493"), label: "Alert — Low Priority (pink)" },
-            { svg: airliner("#FF2020"), label: "Alert — High Priority (red)" },
-            { svg: airliner("#1A3A8A"), label: "Alert — Government (navy)" },
-            { svg: airliner("white"), label: "Alert — General (white)" },
+            { svg: airliner("#FF1493"), label: "VIP / Celebrity / Bizjet (hot pink)" },
+            { svg: airliner("#FF2020"), label: "Dictator / Oligarch (red)" },
+            { svg: airliner("#3b82f6"), label: "Government / Police / Customs (blue)" },
+            { svg: heli("#32CD32"), label: "Medical / Fire / Rescue (lime)" },
+            { svg: airliner("yellow"), label: "Military / Intelligence (yellow)" },
+            { svg: airliner("#222"), label: "PIA — Privacy / Stealth (black)" },
+            { svg: airliner("#FF8C00"), label: "Private Flights / Joe Cool (orange)" },
+            { svg: airliner("white"), label: "Climate Crisis (white)" },
+            { svg: airliner("#9B59B6"), label: "Private Jets / Historic / Other (purple)" },
+        ],
+    },
+    {
+        name: "POTUS FLEET",
+        color: "text-yellow-400 border-yellow-500/30",
+        items: [
+            { svg: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="none" stroke="gold" stroke-width="2" stroke-dasharray="4 2"/><g transform="translate(6,6)"><path d="M12 2C11.2 2 10.5 2.8 10.5 3.5V8.5L3 13V15L10.5 12.5V18L8 19.5V21L12 19.5L16 21V19.5L13.5 18V12.5L21 15V13L13.5 8.5V3.5C13.5 2.8 12.8 2 12 2Z" fill="#FF1493" stroke="black" stroke-width="0.5"/></g></svg>`, label: "Air Force One / Two (gold ring)" },
+            { svg: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="none" stroke="gold" stroke-width="2" stroke-dasharray="4 2"/><g transform="translate(8,6)"><path d="M10 6L10 14L8 16L8 18L10 17L12 22L14 17L16 18L16 16L14 14L14 6C14 4 13 2 12 2C11 2 10 4 10 6Z" fill="#FF1493" stroke="black" stroke-width="0.5"/></g></svg>`, label: "Marine One (gold ring + heli)" },
         ],
     },
     {
@@ -142,6 +155,14 @@ const LEGEND: LegendCategory[] = [
         ],
     },
     {
+        name: "WILDFIRES",
+        color: "text-red-400 border-red-500/30",
+        items: [
+            { svg: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"><path d="M12 1C8 7 5 10 5 14a7 7 0 0 0 14 0c0-4-3-7-7-13z" fill="#ff6600" stroke="#ffcc00" stroke-width="1"/></svg>`, label: "Active wildfire / hotspot" },
+            { svg: clusterCircle("#cc0000", "#ff3300"), label: "Fire cluster (grouped hotspots)" },
+        ],
+    },
+    {
         name: "INCIDENTS & INTELLIGENCE",
         color: "text-red-400 border-red-500/30",
         items: [
@@ -164,6 +185,14 @@ const LEGEND: LegendCategory[] = [
             { svg: square("#ff0040"), label: "High severity (>75% aircraft degraded)" },
             { svg: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" fill="#ff0040" stroke="#000" stroke-width="1" opacity="0.35" rx="2"/></svg>`, label: "Medium severity (50-75% degraded)" },
             { svg: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" fill="#ff0040" stroke="#000" stroke-width="1" opacity="0.2" rx="2"/></svg>`, label: "Low severity (25-50% degraded)" },
+        ],
+    },
+    {
+        name: "INFRASTRUCTURE",
+        color: "text-purple-400 border-purple-500/30",
+        items: [
+            { svg: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.5"><rect x="3" y="3" width="18" height="6" rx="1" fill="#2e1065"/><rect x="3" y="11" width="18" height="6" rx="1" fill="#2e1065"/><circle cx="7" cy="6" r="1" fill="#a78bfa"/><circle cx="7" cy="14" r="1" fill="#a78bfa"/></svg>`, label: "Data Center" },
+            { svg: circle("#ef4444"), label: "Internet Outage Zone" },
         ],
     },
     {

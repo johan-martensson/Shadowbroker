@@ -337,10 +337,22 @@ def enrich_with_tracked_names(flight: dict) -> dict:
         match = _TRACKED_NAMES_DB[callsign]
 
     if match:
+        name = match["name"]
         # Let Excel take precedence as it has cleaner individual names (e.g. Elon Musk instead of FALCON LANDING LLC).
-        flight["alert_operator"] = match["name"]
+        flight["alert_operator"] = name
         flight["alert_category"] = match["category"]
-        if "alert_color" not in flight:
+        
+        # Override pink default if the name implies a specific function
+        name_lower = name.lower()
+        is_gov = any(w in name_lower for w in ['state of ', 'government', 'republic', 'ministry', 'department', 'federal', 'cia'])
+        is_law = any(w in name_lower for w in ['police', 'marshal', 'sheriff', 'douane', 'customs', 'patrol', 'gendarmerie', 'guardia', 'law enforcement'])
+        is_med = any(w in name_lower for w in ['fire', 'bomberos', 'ambulance', 'paramedic', 'medevac', 'rescue', 'hospital', 'medical', 'lifeflight'])
+        
+        if is_gov or is_law:
+            flight["alert_color"] = "blue"
+        elif is_med:
+            flight["alert_color"] = "#32cd32"  # lime
+        elif "alert_color" not in flight:
             flight["alert_color"] = "pink"
 
     return flight

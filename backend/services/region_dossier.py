@@ -1,6 +1,8 @@
 import logging
+import time
 import concurrent.futures
 from urllib.parse import quote
+import requests as _requests
 from cachetools import TTLCache
 from services.network_utils import fetch_with_curl
 
@@ -10,26 +12,46 @@ logger = logging.getLogger(__name__)
 # Key: rounded lat/lng grid (0.1 degree ≈ 11km)
 dossier_cache = TTLCache(maxsize=500, ttl=86400)
 
+# Nominatim requires max 1 req/sec — track last call time
+_nominatim_last_call = 0.0
+
 
 def _reverse_geocode(lat: float, lng: float) -> dict:
+    global _nominatim_last_call
     url = (
         f"https://nominatim.openstreetmap.org/reverse?"
         f"lat={lat}&lon={lng}&format=json&zoom=10&addressdetails=1&accept-language=en"
     )
-    try:
-        res = fetch_with_curl(url, timeout=10)
-        if res.status_code == 200:
-            data = res.json()
-            addr = data.get("address", {})
-            return {
-                "city": addr.get("city") or addr.get("town") or addr.get("village") or addr.get("county") or "",
-                "state": addr.get("state") or addr.get("region") or "",
-                "country": addr.get("country") or "",
-                "country_code": (addr.get("country_code") or "").upper(),
-                "display_name": data.get("display_name", ""),
-            }
-    except Exception as e:
-        logger.warning(f"Reverse geocode failed: {e}")
+    headers = {"User-Agent": "ShadowBroker-OSINT/1.0 (live-risk-dashboard; contact@shadowbroker.app)"}
+
+    for attempt in range(2):
+        # Enforce Nominatim's 1 req/sec policy
+        elapsed = time.time() - _nominatim_last_call
+        if elapsed < 1.1:
+            time.sleep(1.1 - elapsed)
+        _nominatim_last_call = time.time()
+
+        try:
+            # Use requests directly — fetch_with_curl raises on non-200 which breaks 429 handling
+            res = _requests.get(url, timeout=10, headers=headers)
+            if res.status_code == 200:
+                data = res.json()
+                addr = data.get("address", {})
+                return {
+                    "city": addr.get("city") or addr.get("town") or addr.get("village") or addr.get("county") or "",
+                    "state": addr.get("state") or addr.get("region") or "",
+                    "country": addr.get("country") or "",
+                    "country_code": (addr.get("country_code") or "").upper(),
+                    "display_name": data.get("display_name", ""),
+                }
+            elif res.status_code == 429:
+                logger.warning(f"Nominatim 429 rate-limited, retrying after 2s (attempt {attempt+1})")
+                time.sleep(2)
+                continue
+            else:
+                logger.warning(f"Nominatim returned {res.status_code}")
+        except Exception as e:
+            logger.warning(f"Reverse geocode failed: {e}")
     return {}
 
 

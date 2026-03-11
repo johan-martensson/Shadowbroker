@@ -2723,64 +2723,209 @@ const MaplibreViewer = ({ data, activeLayers, onEntityClick, flyToLocation, sele
                     </Marker>
                 )}
 
-                {/* SENTINEL-2 IMAGERY — floating intel card on map near right-click */}
-                {selectedEntity?.type === 'region_dossier' && selectedEntity.extra && regionDossier?.sentinel2 && !regionDossierLoading && (
-                    <Popup
-                        longitude={selectedEntity.extra.lng}
-                        latitude={selectedEntity.extra.lat}
-                        anchor="top-left"
-                        offset={[20, -10]}
-                        closeButton={false}
-                        closeOnClick={false}
-                        className="sentinel-popup"
-                        maxWidth="320px"
-                    >
-                        <div className="bg-black/90 backdrop-blur-md border border-blue-500/50 rounded-lg overflow-hidden shadow-[0_0_25px_rgba(59,130,246,0.3)] pointer-events-auto" style={{ width: 300 }}>
-                            {/* Header bar */}
-                            <div className="flex items-center justify-between px-3 py-1.5 bg-blue-950/60 border-b border-blue-500/30">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-                                    <span className="text-[9px] text-blue-400 font-mono tracking-[0.2em] font-bold">SENTINEL-2 IMAGERY</span>
+                {/* SENTINEL-2 IMAGERY — fullscreen overlay modal */}
+                {selectedEntity?.type === 'region_dossier' && selectedEntity.extra && regionDossier?.sentinel2 && !regionDossierLoading && (() => {
+                    const s2 = regionDossier.sentinel2;
+                    const imgUrl = s2.fullres_url || s2.thumbnail_url;
+                    return (
+                        <div
+                            style={{
+                                position: 'fixed',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                zIndex: 9999,
+                                background: 'rgba(0,0,0,0.85)',
+                                backdropFilter: 'blur(8px)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '60px 20px 20px 20px',
+                            }}
+                            onClick={(e) => { if (e.target === e.currentTarget) onEntityClick(null); }}
+                            onKeyDown={(e: any) => { if (e.key === 'Escape') onEntityClick(null); }}
+                            tabIndex={-1}
+                            ref={(el) => el?.focus()}
+                        >
+                            <div style={{
+                                background: 'rgba(0,0,0,0.95)',
+                                border: '1px solid rgba(59,130,246,0.5)',
+                                borderRadius: 12,
+                                overflow: 'hidden',
+                                maxWidth: 'calc(100vw - 40px)',
+                                maxHeight: 'calc(100vh - 80px)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                boxShadow: '0 0 60px rgba(59,130,246,0.3)',
+                            }}>
+                                {/* Header bar */}
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: '10px 16px',
+                                    background: 'rgba(30,58,138,0.4)',
+                                    borderBottom: '1px solid rgba(59,130,246,0.3)',
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#60a5fa', animation: 'pulse 2s infinite' }} />
+                                        <span style={{ fontSize: 11, color: '#60a5fa', fontFamily: 'monospace', letterSpacing: '0.2em', fontWeight: 'bold' }}>
+                                            SENTINEL-2 IMAGERY
+                                        </span>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                        <span style={{ fontSize: 10, color: 'rgba(147,197,253,0.6)', fontFamily: 'monospace' }}>
+                                            {selectedEntity.extra.lat.toFixed(4)}, {selectedEntity.extra.lng.toFixed(4)}
+                                        </span>
+                                        <button
+                                            onClick={() => onEntityClick(null)}
+                                            style={{
+                                                background: 'rgba(239,68,68,0.2)',
+                                                border: '1px solid rgba(239,68,68,0.4)',
+                                                borderRadius: 6,
+                                                color: '#ef4444',
+                                                fontSize: 10,
+                                                fontFamily: 'monospace',
+                                                padding: '4px 10px',
+                                                cursor: 'pointer',
+                                                letterSpacing: '0.1em',
+                                            }}
+                                        >
+                                            ✕ CLOSE
+                                        </button>
+                                    </div>
                                 </div>
-                                <span className="text-[8px] text-blue-300/60 font-mono">{selectedEntity.extra.lat.toFixed(3)}, {selectedEntity.extra.lng.toFixed(3)}</span>
+
+                                {s2.found ? (
+                                    <>
+                                        {/* Metadata row */}
+                                        <div style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            padding: '8px 16px',
+                                            fontSize: 11,
+                                            fontFamily: 'monospace',
+                                            borderBottom: '1px solid rgba(30,58,138,0.4)',
+                                        }}>
+                                            <span style={{ color: '#93c5fd' }}>{s2.platform}</span>
+                                            <span style={{ color: '#22d3ee', fontWeight: 'bold' }}>{s2.datetime?.slice(0, 10)}</span>
+                                            <span style={{ color: '#93c5fd' }}>{s2.cloud_cover?.toFixed(0)}% cloud</span>
+                                        </div>
+
+                                        {/* Image */}
+                                        {imgUrl ? (
+                                            <div style={{ flex: 1, overflow: 'auto', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
+                                                <img
+                                                    src={imgUrl}
+                                                    alt="Sentinel-2 scene"
+                                                    style={{
+                                                        maxWidth: '100%',
+                                                        maxHeight: 'calc(100vh - 220px)',
+                                                        objectFit: 'contain',
+                                                        display: 'block',
+                                                    }}
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div style={{ padding: '40px 16px', fontSize: 11, color: 'rgba(147,197,253,0.5)', fontFamily: 'monospace', textAlign: 'center' }}>
+                                                Scene found — no preview available
+                                            </div>
+                                        )}
+
+                                        {/* Action buttons */}
+                                        {imgUrl && (
+                                            <div style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: 12,
+                                                padding: '10px 16px',
+                                                background: 'rgba(30,58,138,0.3)',
+                                                borderTop: '1px solid rgba(59,130,246,0.2)',
+                                            }}>
+                                                <a
+                                                    href={imgUrl}
+                                                    download={`sentinel2_${selectedEntity.extra.lat.toFixed(4)}_${selectedEntity.extra.lng.toFixed(4)}.jpg`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    style={{
+                                                        background: 'rgba(59,130,246,0.2)',
+                                                        border: '1px solid rgba(59,130,246,0.5)',
+                                                        borderRadius: 6,
+                                                        color: '#60a5fa',
+                                                        fontSize: 10,
+                                                        fontFamily: 'monospace',
+                                                        padding: '6px 16px',
+                                                        cursor: 'pointer',
+                                                        textDecoration: 'none',
+                                                        letterSpacing: '0.15em',
+                                                        fontWeight: 'bold',
+                                                    }}
+                                                >
+                                                    ⬇ DOWNLOAD
+                                                </a>
+                                                <button
+                                                    onClick={async () => {
+                                                        try {
+                                                            const resp = await fetch(imgUrl);
+                                                            const blob = await resp.blob();
+                                                            await navigator.clipboard.write([
+                                                                new ClipboardItem({ [blob.type]: blob })
+                                                            ]);
+                                                        } catch {
+                                                            // fallback: copy URL
+                                                            await navigator.clipboard.writeText(imgUrl);
+                                                        }
+                                                    }}
+                                                    style={{
+                                                        background: 'rgba(34,211,238,0.15)',
+                                                        border: '1px solid rgba(34,211,238,0.4)',
+                                                        borderRadius: 6,
+                                                        color: '#22d3ee',
+                                                        fontSize: 10,
+                                                        fontFamily: 'monospace',
+                                                        padding: '6px 16px',
+                                                        cursor: 'pointer',
+                                                        letterSpacing: '0.15em',
+                                                        fontWeight: 'bold',
+                                                    }}
+                                                >
+                                                    📋 COPY
+                                                </button>
+                                                <a
+                                                    href={imgUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    style={{
+                                                        background: 'rgba(16,185,129,0.15)',
+                                                        border: '1px solid rgba(16,185,129,0.4)',
+                                                        borderRadius: 6,
+                                                        color: '#10b981',
+                                                        fontSize: 10,
+                                                        fontFamily: 'monospace',
+                                                        padding: '6px 16px',
+                                                        cursor: 'pointer',
+                                                        textDecoration: 'none',
+                                                        letterSpacing: '0.15em',
+                                                        fontWeight: 'bold',
+                                                    }}
+                                                >
+                                                    ↗ OPEN FULL RES
+                                                </a>
+                                            </div>
+                                        )}
+                                    </>
+                                ) : (
+                                    <div style={{ padding: '40px 16px', fontSize: 11, color: 'rgba(147,197,253,0.5)', fontFamily: 'monospace', textAlign: 'center' }}>
+                                        No clear imagery in last 30 days
+                                    </div>
+                                )}
                             </div>
-
-                            {regionDossier.sentinel2.found ? (
-                                <>
-                                    {/* Metadata row */}
-                                    <div className="flex items-center justify-between px-3 py-1.5 text-[9px] font-mono border-b border-blue-900/40">
-                                        <span className="text-blue-300">{regionDossier.sentinel2.platform}</span>
-                                        <span className="text-cyan-400 font-bold">{regionDossier.sentinel2.datetime?.slice(0, 10)}</span>
-                                        <span className="text-blue-300">{regionDossier.sentinel2.cloud_cover?.toFixed(0)}% cloud</span>
-                                    </div>
-
-                                    {/* Thumbnail */}
-                                    {regionDossier.sentinel2.thumbnail_url ? (
-                                        <a href={regionDossier.sentinel2.fullres_url || regionDossier.sentinel2.thumbnail_url} target="_blank" rel="noopener noreferrer">
-                                            <img
-                                                src={regionDossier.sentinel2.thumbnail_url}
-                                                alt="Sentinel-2 scene"
-                                                className="w-full block hover:brightness-110 transition-all cursor-pointer"
-                                                style={{ maxHeight: 220, objectFit: 'cover' }}
-                                            />
-                                        </a>
-                                    ) : (
-                                        <div className="px-3 py-4 text-[9px] text-blue-300/50 font-mono text-center">Scene found — no preview available</div>
-                                    )}
-
-                                    {/* Footer */}
-                                    <div className="px-3 py-1 bg-blue-950/40 text-[7px] text-blue-400/50 font-mono tracking-widest text-center">
-                                        CLICK IMAGE TO OPEN FULL RESOLUTION
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="px-3 py-4 text-[9px] text-blue-300/50 font-mono text-center">
-                                    No clear imagery in last 30 days
-                                </div>
-                            )}
                         </div>
-                    </Popup>
-                )}
+                    );
+                })()}
 
                 {/* MEASUREMENT LINES */}
                 {measurePoints && measurePoints.length >= 2 && (

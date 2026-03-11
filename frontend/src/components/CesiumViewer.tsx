@@ -656,13 +656,11 @@ export default function CesiumViewer({ data, activeLayers, activeFilters, effect
             }
             if (filters.tracked_owner?.length) {
                 const op = (f.alert_operator || '').toLowerCase();
-                const t1 = (f.alert_tag1 || '').toLowerCase();
-                const t2 = (f.alert_tag2 || '').toLowerCase();
-                const t3 = (f.alert_tag3 || '').toLowerCase();
+                const tags = (f.alert_tags || '').toLowerCase();
                 const cs = (f.callsign || '').toLowerCase();
                 if (!filters.tracked_owner.some(sv => {
                     const q = sv.toLowerCase();
-                    return op.includes(q) || t1.includes(q) || t2.includes(q) || t3.includes(q) || cs.includes(q);
+                    return op.includes(q) || tags.includes(q) || cs.includes(q);
                 })) return false;
             }
             return true;

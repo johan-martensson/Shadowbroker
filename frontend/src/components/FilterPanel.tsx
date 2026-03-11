@@ -106,8 +106,7 @@ export default function FilterPanel({ data, activeFilters, setActiveFilters }: F
         const ops = new Set<string>(trackedOperators);
         for (const f of data?.tracked_flights || []) {
             if (f.alert_operator) ops.add(f.alert_operator);
-            if (f.alert_tag1) ops.add(f.alert_tag1);
-            if (f.alert_tag2) ops.add(f.alert_tag2);
+            if (f.alert_tags) ops.add(f.alert_tags);
         }
         return Array.from(ops).sort();
     }, [data?.tracked_flights]);
