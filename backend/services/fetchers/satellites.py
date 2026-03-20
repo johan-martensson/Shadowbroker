@@ -107,7 +107,7 @@ _SAT_INTEL_DB = [
     ("IGS", {"country": "Japan", "mission": "military_recon", "sat_type": "Intelligence Gathering", "wiki": "https://en.wikipedia.org/wiki/Information_Gathering_Satellite"}),
     ("CAPELLA", {"country": "USA", "mission": "sar", "sat_type": "SAR Imaging", "wiki": "https://en.wikipedia.org/wiki/Capella_Space"}),
     ("ICEYE", {"country": "Finland", "mission": "sar", "sat_type": "SAR Microsatellite", "wiki": "https://en.wikipedia.org/wiki/ICEYE"}),
-    ("COSMO-SKYMED", {"country": "Italy", "mission": "sar", "sat_type": "SAR Constellation", "wiki": "https://en.wikipedia.org/wiki/COSMO-SkyMed"}),
+    ("COSMO", {"country": "Italy", "mission": "sar", "sat_type": "SAR Constellation", "wiki": "https://en.wikipedia.org/wiki/COSMO-SkyMed"}),
     ("TANDEM", {"country": "Germany", "mission": "sar", "sat_type": "SAR Interferometry", "wiki": "https://en.wikipedia.org/wiki/TanDEM-X"}),
     ("PAZ", {"country": "Spain", "mission": "sar", "sat_type": "SAR Imaging", "wiki": "https://en.wikipedia.org/wiki/PAZ_(satellite)"}),
     ("WORLDVIEW", {"country": "USA", "mission": "commercial_imaging", "sat_type": "Maxar High-Res", "wiki": "https://en.wikipedia.org/wiki/WorldView-3"}),
@@ -129,6 +129,15 @@ _SAT_INTEL_DB = [
     ("TUNDRA", {"country": "Russia", "mission": "early_warning", "sat_type": "Missile Warning", "wiki": "https://en.wikipedia.org/wiki/Tundra_(satellite)"}),
     ("ISS", {"country": "Intl", "mission": "space_station", "sat_type": "Space Station", "wiki": "https://en.wikipedia.org/wiki/International_Space_Station"}),
     ("TIANGONG", {"country": "China", "mission": "space_station", "sat_type": "Space Station", "wiki": "https://en.wikipedia.org/wiki/Tiangong_space_station"}),
+    ("CSS", {"country": "China", "mission": "space_station", "sat_type": "Chinese Space Station", "wiki": "https://en.wikipedia.org/wiki/Tiangong_space_station"}),
+    # Russian military — COSMOS covers the bulk of active Russian military/SIGINT satellites
+    ("COSMOS", {"country": "Russia", "mission": "military_recon", "sat_type": "Russian Military / COSMOS", "wiki": "https://en.wikipedia.org/wiki/Kosmos_(satellite)"}),
+    # US military communications
+    ("WGS", {"country": "USA", "mission": "sigint", "sat_type": "Wideband Global SATCOM", "wiki": "https://en.wikipedia.org/wiki/Wideband_Global_SATCOM"}),
+    ("AEHF", {"country": "USA", "mission": "sigint", "sat_type": "Advanced EHF MILSATCOM", "wiki": "https://en.wikipedia.org/wiki/Advanced_Extremely_High_Frequency"}),
+    ("MUOS", {"country": "USA", "mission": "sigint", "sat_type": "Mobile User Objective System", "wiki": "https://en.wikipedia.org/wiki/Mobile_User_Objective_System"}),
+    # EU Earth observation
+    ("SENTINEL", {"country": "EU", "mission": "commercial_imaging", "sat_type": "ESA Copernicus", "wiki": "https://en.wikipedia.org/wiki/Sentinel_(satellite)"}),
 ]
 
 

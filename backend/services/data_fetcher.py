@@ -20,6 +20,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from apscheduler.schedulers.background import BackgroundScheduler
+from datetime import datetime
 from services.cctv_pipeline import init_db
 
 # Shared state — all fetcher modules read/write through this
@@ -131,10 +132,11 @@ def start_scheduler():
     _cctv_lta = LTASingaporeIngestor()
     _cctv_atx = AustinTXIngestor()
     _cctv_nyc = NYCDOTIngestor()
-    _scheduler.add_job(_cctv_tfl.ingest, 'interval', minutes=10, id='cctv_tfl', max_instances=1, misfire_grace_time=120)
-    _scheduler.add_job(_cctv_lta.ingest, 'interval', minutes=10, id='cctv_lta', max_instances=1, misfire_grace_time=120)
-    _scheduler.add_job(_cctv_atx.ingest, 'interval', minutes=10, id='cctv_atx', max_instances=1, misfire_grace_time=120)
-    _scheduler.add_job(_cctv_nyc.ingest, 'interval', minutes=10, id='cctv_nyc', max_instances=1, misfire_grace_time=120)
+    _now = datetime.now()
+    _scheduler.add_job(_cctv_tfl.ingest, 'interval', minutes=10, id='cctv_tfl', max_instances=1, misfire_grace_time=120, next_run_time=_now)
+    _scheduler.add_job(_cctv_lta.ingest, 'interval', minutes=10, id='cctv_lta', max_instances=1, misfire_grace_time=120, next_run_time=_now)
+    _scheduler.add_job(_cctv_atx.ingest, 'interval', minutes=10, id='cctv_atx', max_instances=1, misfire_grace_time=120, next_run_time=_now)
+    _scheduler.add_job(_cctv_nyc.ingest, 'interval', minutes=10, id='cctv_nyc', max_instances=1, misfire_grace_time=120, next_run_time=_now)
 
     _scheduler.start()
     logger.info("Scheduler started.")
