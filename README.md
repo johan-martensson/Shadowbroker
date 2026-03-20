@@ -6,6 +6,9 @@
   </p>
 </p>
 
+> **Fork notice:** This is a modified fork of [BigBodyCobain/Shadowbroker](https://github.com/BigBodyCobain/Shadowbroker), distributed under the same [AGPL-3.0 license](LICENSE).
+> Changes: expanded military bases dataset (108 → 196, global coverage), satellite classification fixes, yfinance batch fetching, CCTV scheduler startup fix.
+
 ---
 
 
