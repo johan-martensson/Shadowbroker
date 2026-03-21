@@ -593,6 +593,8 @@ const MaplibreViewer = ({ data, activeLayers, onEntityClick, flyToLocation, sele
         frontlineGeoJSON && 'ukraine-frontline-layer',
         earthquakesGeoJSON && 'earthquakes-layer',
         satellitesGeoJSON && 'satellites-layer',
+        cctvGeoJSON && 'cctv-clusters',
+        cctvGeoJSON && 'cctv-cluster-count',
         cctvGeoJSON && 'cctv-layer',
         kiwisdrGeoJSON && 'kiwisdr-clusters',
         kiwisdrGeoJSON && 'kiwisdr-layer',

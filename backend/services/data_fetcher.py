@@ -13,10 +13,12 @@ Heavy logic has been extracted into services/fetchers/:
   - infrastructure.py     — internet outages, data centers, CCTV, KiwiSDR
   - geo.py                — ships, airports, frontlines, GDELT, LiveUAMap
 """
+
 import logging
 import concurrent.futures
 from datetime import datetime
 from dotenv import load_dotenv
+
 load_dotenv()
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -25,7 +27,10 @@ from services.cctv_pipeline import init_db
 
 # Shared state — all fetcher modules read/write through this
 from services.fetchers._store import (
-    latest_data, source_timestamps, _mark_fresh, _data_lock,  # noqa: F401 — re-exported for main.py
+    latest_data,
+    source_timestamps,
+    _mark_fresh,
+    _data_lock,  # noqa: F401 — re-exported for main.py
 )
 
 # Domain-specific fetcher modules (already extracted)
@@ -38,18 +43,54 @@ from services.fetchers.news import fetch_news  # noqa: F401
 # Newly extracted fetcher modules
 from services.fetchers.financial import fetch_defense_stocks, fetch_oil_prices  # noqa: F401
 from services.fetchers.earth_observation import (  # noqa: F401
-    fetch_earthquakes, fetch_firms_fires, fetch_space_weather, fetch_weather,
+    fetch_earthquakes,
+    fetch_firms_fires,
+    fetch_space_weather,
+    fetch_weather,
 )
 from services.fetchers.infrastructure import (  # noqa: F401
-    fetch_internet_outages, fetch_datacenters, fetch_military_bases, fetch_power_plants,
-    fetch_cctv, fetch_kiwisdr,
+    fetch_internet_outages,
+    fetch_datacenters,
+    fetch_military_bases,
+    fetch_power_plants,
+    fetch_cctv,
+    fetch_kiwisdr,
 )
 from services.fetchers.geo import (  # noqa: F401
-    fetch_ships, fetch_airports, find_nearest_airport, cached_airports,
-    fetch_frontlines, fetch_gdelt, fetch_geopolitics, update_liveuamap,
+    fetch_ships,
+    fetch_airports,
+    find_nearest_airport,
+    cached_airports,
+    fetch_frontlines,
+    fetch_gdelt,
+    fetch_geopolitics,
+    update_liveuamap,
 )
 
 logger = logging.getLogger(__name__)
+
+
+def run_cctv_ingest_cycle():
+    """Populate the CCTV database, then refresh the in-memory cache."""
+    logger.info("CCTV ingest cycle starting...")
+    from services.cctv_pipeline import (
+        AustinTXIngestor,
+        LTASingaporeIngestor,
+        NYCDOTIngestor,
+        TFLJamCamIngestor,
+    )
+
+    for ingestor_cls in (
+        TFLJamCamIngestor,
+        LTASingaporeIngestor,
+        AustinTXIngestor,
+        NYCDOTIngestor,
+    ):
+        ingestor_cls().ingest()
+
+    fetch_cctv()
+    logger.info("CCTV ingest cycle complete.")
+
 
 # ---------------------------------------------------------------------------
 # Scheduler & Orchestration
@@ -67,8 +108,9 @@ def update_fast_data():
         futures = [executor.submit(func) for func in fast_funcs]
         concurrent.futures.wait(futures)
     with _data_lock:
-        latest_data['last_updated'] = datetime.utcnow().isoformat()
+        latest_data["last_updated"] = datetime.utcnow().isoformat()
     logger.info("Fast-tier update complete.")
+
 
 def update_slow_data():
     """Slow-tier: contextual + enrichment data that refreshes less often (every 5–10 min)."""
@@ -95,6 +137,7 @@ def update_slow_data():
         concurrent.futures.wait(futures)
     logger.info("Slow-tier update complete.")
 
+
 def update_all_data():
     """Full refresh — all tiers run IN PARALLEL for fastest startup."""
     logger.info("Full data update starting (parallel)...")
@@ -105,7 +148,9 @@ def update_all_data():
         concurrent.futures.wait([f0, f1, f2])
     logger.info("Full data update complete.")
 
+
 _scheduler = None
+
 
 def start_scheduler():
     global _scheduler
@@ -113,37 +158,62 @@ def start_scheduler():
     _scheduler = BackgroundScheduler(daemon=True)
 
     # Fast tier — every 60 seconds
-    _scheduler.add_job(update_fast_data, 'interval', seconds=60, id='fast_tier', max_instances=1, misfire_grace_time=30)
+    _scheduler.add_job(
+        update_fast_data,
+        "interval",
+        seconds=60,
+        id="fast_tier",
+        max_instances=1,
+        misfire_grace_time=30,
+    )
 
     # Slow tier — every 5 minutes
-    _scheduler.add_job(update_slow_data, 'interval', minutes=5, id='slow_tier', max_instances=1, misfire_grace_time=120)
+    _scheduler.add_job(
+        update_slow_data,
+        "interval",
+        minutes=5,
+        id="slow_tier",
+        max_instances=1,
+        misfire_grace_time=120,
+    )
 
     # Very slow — every 15 minutes
-    _scheduler.add_job(fetch_gdelt, 'interval', minutes=15, id='gdelt', max_instances=1, misfire_grace_time=120)
-    _scheduler.add_job(update_liveuamap, 'interval', minutes=15, id='liveuamap', max_instances=1, misfire_grace_time=120)
-
-    # CCTV pipeline refresh — every 10 minutes
-    # Instantiate once and reuse — avoids re-creating DB connections on every tick
-    from services.cctv_pipeline import (
-        TFLJamCamIngestor, LTASingaporeIngestor,
-        AustinTXIngestor, NYCDOTIngestor,
+    _scheduler.add_job(
+        fetch_gdelt,
+        "interval",
+        minutes=15,
+        id="gdelt",
+        max_instances=1,
+        misfire_grace_time=120,
     )
-    _cctv_tfl = TFLJamCamIngestor()
-    _cctv_lta = LTASingaporeIngestor()
-    _cctv_atx = AustinTXIngestor()
-    _cctv_nyc = NYCDOTIngestor()
-    _now = datetime.now()
-    _scheduler.add_job(_cctv_tfl.ingest, 'interval', minutes=10, id='cctv_tfl', max_instances=1, misfire_grace_time=120, next_run_time=_now)
-    _scheduler.add_job(_cctv_lta.ingest, 'interval', minutes=10, id='cctv_lta', max_instances=1, misfire_grace_time=120, next_run_time=_now)
-    _scheduler.add_job(_cctv_atx.ingest, 'interval', minutes=10, id='cctv_atx', max_instances=1, misfire_grace_time=120, next_run_time=_now)
-    _scheduler.add_job(_cctv_nyc.ingest, 'interval', minutes=10, id='cctv_nyc', max_instances=1, misfire_grace_time=120, next_run_time=_now)
+    _scheduler.add_job(
+        update_liveuamap,
+        "interval",
+        minutes=15,
+        id="liveuamap",
+        max_instances=1,
+        misfire_grace_time=120,
+    )
+
+    # CCTV pipeline refresh — hydrate DB-backed cameras immediately, then every 10 minutes.
+    _scheduler.add_job(
+        run_cctv_ingest_cycle,
+        "interval",
+        minutes=10,
+        id="cctv_ingest",
+        max_instances=1,
+        misfire_grace_time=120,
+        next_run_time=datetime.utcnow(),
+    )
 
     _scheduler.start()
     logger.info("Scheduler started.")
 
+
 def stop_scheduler():
     if _scheduler:
         _scheduler.shutdown(wait=False)
+
 
 def get_latest_data():
     with _data_lock:
