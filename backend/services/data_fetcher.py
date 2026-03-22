@@ -76,8 +76,13 @@ def run_cctv_ingest_cycle():
     from services.cctv_pipeline import (
         AustinTXIngestor,
         LTASingaporeIngestor,
+        MadridCCTVIngestor,
+        MalagaCCTVIngestor,
         NYCDOTIngestor,
+        SpainDGTIngestor,
         TFLJamCamIngestor,
+        VigoCCTVIngestor,
+        VitoriaGasteizCCTVIngestor,
     )
 
     for ingestor_cls in (
@@ -85,6 +90,11 @@ def run_cctv_ingest_cycle():
         LTASingaporeIngestor,
         AustinTXIngestor,
         NYCDOTIngestor,
+        SpainDGTIngestor,
+        MadridCCTVIngestor,
+        MalagaCCTVIngestor,
+        VigoCCTVIngestor,
+        VitoriaGasteizCCTVIngestor,
     ):
         ingestor_cls().ingest()
 

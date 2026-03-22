@@ -1,5 +1,7 @@
 import logging
+import re
 import sqlite3
+import xml.etree.ElementTree as ET
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Dict, List
@@ -282,6 +284,316 @@ class GlobalOSMCrawlingIngestor(BaseCCTVIngestor):
             return cameras
         except Exception:
             return []
+
+
+# ---------------------------------------------------------------------------
+# Spain — DGT National Roads (DATEX2 XML, ~1,900 cameras)
+# ---------------------------------------------------------------------------
+class SpainDGTIngestor(BaseCCTVIngestor):
+    # Dirección General de Tráfico — national road cameras via DATEX2 v3 XML.
+    # No API key required. Covers all national roads (autopistas, autovías, N-roads)
+    # EXCEPT Basque Country and Catalonia.
+    # Published under Spain's open data framework (Ley 37/2007, EU PSI Directive 2019/1024).
+    DGT_URL = "https://nap.dgt.es/datex2/v3/dgt/DevicePublication/camaras_datex2_v36.xml"
+
+    def fetch_data(self) -> List[Dict[str, Any]]:
+        try:
+            response = fetch_with_curl(self.DGT_URL, timeout=30)
+            response.raise_for_status()
+        except Exception as e:
+            logger.error(f"SpainDGTIngestor: failed to fetch DATEX2 XML: {e}")
+            return []
+
+        try:
+            root = ET.fromstring(response.content)
+        except ET.ParseError as e:
+            logger.error(f"SpainDGTIngestor: failed to parse XML: {e}")
+            return []
+
+        cameras = []
+        # DGT DATEX2 v3 uses <ns2:device> elements with typeOfDevice=camera.
+        # Namespace-agnostic: match local name "device".
+        for el in root.iter():
+            local = el.tag.split("}")[-1] if "}" in el.tag else el.tag
+            if local != "device":
+                continue
+
+            try:
+                cam_id = el.get("id", "")
+                if not cam_id:
+                    continue
+
+                # Coordinates are nested: pointLocation > ... > pointCoordinates > latitude/longitude
+                lat = self._find_text(el, "latitude")
+                lon = self._find_text(el, "longitude")
+                if not lat or not lon:
+                    continue
+
+                image_url = self._find_text(el, "deviceUrl") or f"https://infocar.dgt.es/etraffic/data/camaras/{cam_id}.jpg"
+
+                road_name = self._find_text(el, "roadName") or ""
+                road_dest = self._find_text(el, "roadDestination") or ""
+                description = f"{road_name} → {road_dest}".strip(" →") or f"DGT Camera {cam_id}"
+
+                cameras.append({
+                    "id": f"DGT-{cam_id}",
+                    "source_agency": "DGT Spain",
+                    "lat": float(lat),
+                    "lon": float(lon),
+                    "direction_facing": description,
+                    "media_url": image_url,
+                    "refresh_rate_seconds": 300,
+                })
+            except (ValueError, TypeError) as e:
+                logger.debug(f"SpainDGTIngestor: skipping malformed record: {e}")
+                continue
+
+        logger.info(f"SpainDGTIngestor: parsed {len(cameras)} cameras")
+        return cameras
+
+    @staticmethod
+    def _find_text(element: ET.Element, tag: str) -> str | None:
+        for child in element.iter():
+            local = child.tag.split("}")[-1] if "}" in child.tag else child.tag
+            if local.lower() == tag.lower() and child.text:
+                return child.text.strip()
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Spain — Madrid City Hall (KML, ~200 cameras)
+# ---------------------------------------------------------------------------
+class MadridCCTVIngestor(BaseCCTVIngestor):
+    # Madrid City Hall urban traffic cameras via open data KML.
+    # No API key required. Published on datos.madrid.es.
+    # Licence: Madrid Open Data (free reuse with attribution).
+    MADRID_URL = "http://datos.madrid.es/egob/catalogo/202088-0-trafico-camaras.kml"
+
+    def fetch_data(self) -> List[Dict[str, Any]]:
+        try:
+            response = fetch_with_curl(self.MADRID_URL, timeout=20)
+            response.raise_for_status()
+        except Exception as e:
+            logger.error(f"MadridCCTVIngestor: failed to fetch KML: {e}")
+            return []
+
+        try:
+            root = ET.fromstring(response.content)
+        except ET.ParseError as e:
+            logger.error(f"MadridCCTVIngestor: failed to parse KML: {e}")
+            return []
+
+        cameras = []
+        # KML namespace varies — try both common ones, then fall back to tag-name search
+        placemarks = root.findall(".//{http://www.opengis.net/kml/2.2}Placemark")
+        if not placemarks:
+            placemarks = root.findall(".//{http://earth.google.com/kml/2.2}Placemark")
+        if not placemarks:
+            placemarks = [el for el in root.iter() if el.tag.endswith("Placemark")]
+
+        for i, pm in enumerate(placemarks):
+            try:
+                name = self._find_kml_text(pm, "name") or f"Madrid Camera {i}"
+                coords_text = self._find_kml_text(pm, "coordinates")
+                if not coords_text:
+                    continue
+
+                # KML coordinates: lon,lat,elevation
+                parts = coords_text.strip().split(",")
+                if len(parts) < 2:
+                    continue
+                lon, lat = float(parts[0]), float(parts[1])
+
+                # Extract image URL from description CDATA
+                desc = self._find_kml_text(pm, "description") or ""
+                image_url = self._extract_img_src(desc)
+                if not image_url:
+                    continue
+
+                cameras.append({
+                    "id": f"MAD-{i:04d}",
+                    "source_agency": "Madrid City Hall",
+                    "lat": lat,
+                    "lon": lon,
+                    "direction_facing": name,
+                    "media_url": image_url,
+                    "refresh_rate_seconds": 600,
+                })
+            except (ValueError, TypeError, IndexError) as e:
+                logger.debug(f"MadridCCTVIngestor: skipping malformed placemark: {e}")
+                continue
+
+        logger.info(f"MadridCCTVIngestor: parsed {len(cameras)} cameras")
+        return cameras
+
+    @staticmethod
+    def _find_kml_text(element: ET.Element, tag: str) -> str | None:
+        for child in element.iter():
+            local = child.tag.split("}")[-1] if "}" in child.tag else child.tag
+            if local == tag and child.text:
+                return child.text.strip()
+        return None
+
+    @staticmethod
+    def _extract_img_src(html_fragment: str) -> str | None:
+        match = re.search(r'src=["\']([^"\']+)["\']', html_fragment, re.IGNORECASE)
+        if match:
+            return match.group(1)
+        match = re.search(r'https?://\S+\.jpg', html_fragment, re.IGNORECASE)
+        if match:
+            return match.group(0)
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Spain — Málaga (GeoJSON, ~134 cameras)
+# ---------------------------------------------------------------------------
+class MalagaCCTVIngestor(BaseCCTVIngestor):
+    # Málaga open data — traffic cameras in EPSG:4326 GeoJSON.
+    # No API key required. Published on datosabiertos.malaga.eu.
+    MALAGA_URL = "https://datosabiertos.malaga.eu/recursos/transporte/trafico/da_camarasTrafico-4326.geojson"
+
+    def fetch_data(self) -> List[Dict[str, Any]]:
+        try:
+            response = fetch_with_curl(self.MALAGA_URL, timeout=15)
+            response.raise_for_status()
+            data = response.json()
+        except Exception as e:
+            logger.error(f"MalagaCCTVIngestor: failed to fetch GeoJSON: {e}")
+            return []
+
+        cameras = []
+        for feature in data.get("features", []):
+            try:
+                props = feature.get("properties", {})
+                geom = feature.get("geometry", {})
+                coords = geom.get("coordinates", [])
+                if len(coords) < 2:
+                    continue
+
+                image_url = props.get("URLIMAGEN") or props.get("urlimagen")
+                if not image_url:
+                    continue
+
+                cam_id = props.get("NOMBRE") or props.get("nombre") or str(coords)
+                description = props.get("DESCRIPCION") or props.get("descripcion") or cam_id
+
+                cameras.append({
+                    "id": f"MLG-{cam_id}",
+                    "source_agency": "Málaga City",
+                    "lat": float(coords[1]),
+                    "lon": float(coords[0]),
+                    "direction_facing": description,
+                    "media_url": image_url,
+                    "refresh_rate_seconds": 300,
+                })
+            except (ValueError, TypeError, IndexError) as e:
+                logger.debug(f"MalagaCCTVIngestor: skipping malformed feature: {e}")
+                continue
+
+        logger.info(f"MalagaCCTVIngestor: parsed {len(cameras)} cameras")
+        return cameras
+
+
+# ---------------------------------------------------------------------------
+# Spain — Vigo (GeoJSON, ~59 cameras)
+# ---------------------------------------------------------------------------
+class VigoCCTVIngestor(BaseCCTVIngestor):
+    # Vigo open data — traffic cameras in GeoJSON.
+    # No API key required. Published on datos.vigo.org.
+    VIGO_URL = "https://datos.vigo.org/data/trafico/camaras-trafico.geojson"
+
+    def fetch_data(self) -> List[Dict[str, Any]]:
+        try:
+            response = fetch_with_curl(self.VIGO_URL, timeout=15)
+            response.raise_for_status()
+            data = response.json()
+        except Exception as e:
+            logger.error(f"VigoCCTVIngestor: failed to fetch GeoJSON: {e}")
+            return []
+
+        cameras = []
+        for feature in data.get("features", []):
+            try:
+                props = feature.get("properties", {})
+                geom = feature.get("geometry", {})
+                coords = geom.get("coordinates", [])
+                if len(coords) < 2:
+                    continue
+
+                # Vigo uses PHP image endpoints
+                image_url = props.get("urlimagen") or props.get("URLIMAGEN") or props.get("url")
+                if not image_url:
+                    continue
+
+                cam_id = props.get("id") or props.get("nombre") or str(coords)
+                description = props.get("nombre") or props.get("descripcion") or f"Vigo Camera {cam_id}"
+
+                cameras.append({
+                    "id": f"VGO-{cam_id}",
+                    "source_agency": "Vigo City",
+                    "lat": float(coords[1]),
+                    "lon": float(coords[0]),
+                    "direction_facing": description,
+                    "media_url": image_url,
+                    "refresh_rate_seconds": 300,
+                })
+            except (ValueError, TypeError, IndexError) as e:
+                logger.debug(f"VigoCCTVIngestor: skipping malformed feature: {e}")
+                continue
+
+        logger.info(f"VigoCCTVIngestor: parsed {len(cameras)} cameras")
+        return cameras
+
+
+# ---------------------------------------------------------------------------
+# Spain — Vitoria-Gasteiz (GeoJSON, ~17 cameras)
+# ---------------------------------------------------------------------------
+class VitoriaGasteizCCTVIngestor(BaseCCTVIngestor):
+    # Vitoria-Gasteiz municipal traffic cameras in GeoJSON.
+    # No API key required. Published on vitoria-gasteiz.org.
+    VITORIA_URL = "https://www.vitoria-gasteiz.org/c11-01w/cameras?action=list&format=GEOJSON"
+
+    def fetch_data(self) -> List[Dict[str, Any]]:
+        try:
+            response = fetch_with_curl(self.VITORIA_URL, timeout=15)
+            response.raise_for_status()
+            data = response.json()
+        except Exception as e:
+            logger.error(f"VitoriaGasteizCCTVIngestor: failed to fetch GeoJSON: {e}")
+            return []
+
+        cameras = []
+        for feature in data.get("features", []):
+            try:
+                props = feature.get("properties", {})
+                geom = feature.get("geometry", {})
+                coords = geom.get("coordinates", [])
+                if len(coords) < 2:
+                    continue
+
+                image_url = props.get("imagen") or props.get("url")
+                if not image_url:
+                    continue
+
+                cam_id = props.get("id") or props.get("nombre") or str(coords)
+                description = props.get("nombre") or props.get("descripcion") or f"Vitoria Camera {cam_id}"
+
+                cameras.append({
+                    "id": f"VIT-{cam_id}",
+                    "source_agency": "Vitoria-Gasteiz",
+                    "lat": float(coords[1]),
+                    "lon": float(coords[0]),
+                    "direction_facing": description,
+                    "media_url": image_url,
+                    "refresh_rate_seconds": 300,
+                })
+            except (ValueError, TypeError, IndexError) as e:
+                logger.debug(f"VitoriaGasteizCCTVIngestor: skipping malformed feature: {e}")
+                continue
+
+        logger.info(f"VitoriaGasteizCCTVIngestor: parsed {len(cameras)} cameras")
+        return cameras
 
 
 def _detect_media_type(url: str) -> str:
