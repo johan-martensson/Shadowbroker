@@ -222,11 +222,16 @@ helm install shadowbroker ./helm/chart --create-namespace --namespace shadowbrok
 
 ### 📷 Surveillance
 
-* **CCTV Mesh** — 2,000+ live traffic cameras from:
+* **CCTV Mesh** — 4,400+ live traffic cameras from:
   * 🇬🇧 Transport for London JamCams
   * 🇺🇸 Austin, TX TxDOT
   * 🇺🇸 NYC DOT
   * 🇸🇬 Singapore LTA
+  * 🇪🇸 Spanish DGT (national roads)
+  * 🇪🇸 Madrid City Hall
+  * 🇪🇸 Málaga City
+  * 🇪🇸 Vigo City
+  * 🇪🇸 Vitoria-Gasteiz
   * Custom URL ingestion
 * **Feed Rendering** — Automatic detection & rendering of video, MJPEG, HLS, embed, satellite tile, and image feeds
 * **Clustered Map Display** — Green dots cluster with count labels, decluster on zoom
@@ -310,6 +315,11 @@ helm install shadowbroker ./helm/chart --create-namespace --namespace shadowbrok
 | [TxDOT](https://its.txdot.gov) | Austin TX traffic cameras | ~5min | No |
 | [NYC DOT](https://webcams.nyctmc.org) | NYC traffic cameras | ~5min | No |
 | [Singapore LTA](https://datamall.lta.gov.sg) | Singapore traffic cameras | ~5min | **Yes** |
+| [DGT Spain](https://nap.dgt.es) | Spanish national road cameras | ~10min | No |
+| [Madrid Open Data](https://datos.madrid.es) | Madrid urban traffic cameras | ~10min | No |
+| [Málaga Open Data](https://datosabiertos.malaga.eu) | Málaga traffic cameras | ~10min | No |
+| [Vigo Open Data](https://datos.vigo.org) | Vigo traffic cameras | ~10min | No |
+| [Vitoria-Gasteiz](https://www.vitoria-gasteiz.org) | Vitoria-Gasteiz traffic cameras | ~10min | No |
 | [RestCountries](https://restcountries.com) | Country profile data | On-demand (cached 24h) | No |
 | [Wikidata SPARQL](https://query.wikidata.org) | Head of state data | On-demand (cached 24h) | No |
 | [Wikipedia API](https://en.wikipedia.org/api) | Location summaries & aircraft images | On-demand (cached) | No |

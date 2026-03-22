@@ -857,7 +857,7 @@ function NewsFeedInner({ data, selectedEntity, regionDossier, regionDossierLoadi
                             ? new Date(selectedEntity.extra.last_updated + 'Z').toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZoneName: 'short' }).toUpperCase() + ' — OPTIC INTERCEPT'
                             : 'OPTIC INTERCEPT'}
                     </h2>
-                    <span className="text-[10px] text-[var(--text-muted)] font-mono">ID: {selectedEntity.id}</span>
+                    <span className="text-[10px] text-[var(--text-muted)] font-mono">ID: {selectedEntity.id}{selectedEntity.extra?.source_agency ? ` | ${selectedEntity.extra.source_agency}` : ''}</span>
                 </div>
                 <div className="relative w-full h-48 bg-black flex items-center justify-center p-1">
                     {(() => {
@@ -898,22 +898,24 @@ function NewsFeedInner({ data, selectedEntity, regionDossier, regionDossierLoadi
                             <img
                                 src={url}
                                 alt="MJPEG Feed"
+                                referrerPolicy="no-referrer"
                                 className="w-full h-full object-cover border border-cyan-900/50 rounded-sm filter contrast-125 saturate-50"
                                 onError={(e) => {
                                     const target = e.target as HTMLImageElement;
-                                    target.src = "https://via.placeholder.com/400x300.png?text=FEED+UNAVAILABLE";
+                                    target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23111' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%2306b6d4' font-family='monospace' font-size='14'%3EFEED UNAVAILABLE%3C/text%3E%3C/svg%3E";
                                 }}
                             />
                         );
-                        // satellite / image — standard img with referrer policy for external tiles
+                        // satellite / image
                         return (
                             <img
                                 src={url}
                                 alt="CCTV Feed"
+                                referrerPolicy="no-referrer"
                                 className="w-full h-full object-cover border border-cyan-900/50 rounded-sm filter contrast-125 saturate-50"
                                 onError={(e) => {
                                     const target = e.target as HTMLImageElement;
-                                    target.src = "https://via.placeholder.com/400x300.png?text=NO+SIGNAL";
+                                    target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23111' width='400' height='300'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%2306b6d4' font-family='monospace' font-size='14'%3ENO SIGNAL%3C/text%3E%3C/svg%3E";
                                 }}
                             />
                         );
