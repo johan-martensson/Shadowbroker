@@ -1,0 +1,64 @@
+name: Sync Upstream
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"  # every 6 hours
+  workflow_dispatch:        # manual trigger
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch upstream
+        run: git remote add upstream https://github.com/BigBodyCobain/Shadowbroker.git && git fetch upstream
+
+      - name: Merge upstream/main
+        id: merge
+        run: |
+          if git merge-base --is-ancestor upstream/main HEAD; then
+            echo "Already up to date with upstream."
+          else
+            if ! git merge upstream/main --no-edit -m "chore: sync upstream"; then
+              git merge --abort
+              echo "conflict=true" >> "$GITHUB_OUTPUT"
+              exit 1
+            fi
+            git push origin main
+          fi
+
+      - name: Create issue on conflict
+        if: failure() && steps.merge.outputs.conflict == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: "upstream-conflict",
+              state: "open",
+            });
+            if (issues.length > 0) {
+              console.log("Conflict issue already open, skipping.");
+              return;
+            }
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: "Merge conflict with upstream",
+              body: `A scheduled sync from [upstream](https://github.com/BigBodyCobain/Shadowbroker) failed due to merge conflicts.\n\nResolve manually:\n\`\`\`\ngit fetch upstream\ngit merge upstream/main\n# resolve conflicts\ngit push origin main\n\`\`\`\n\n[Failed run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`,
+              labels: ["upstream-conflict"],
+            });
