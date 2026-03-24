@@ -429,7 +429,7 @@ If you just want to run the dashboard without dealing with terminal commands:
 2. Download the latest `.zip` file from the release.
 3. Extract the folder to your computer.
 4. **Windows:** Double-click `start.bat`.
-   **Mac/Linux:** Open terminal, type `chmod +x start.sh`, and run `./start.sh`.
+   **Mac/Linux:** Open terminal, type `chmod +x start.sh`, `dos2unix start.sh`, and run `./start.sh`.
 5. It will automatically install everything and launch the dashboard!
 
 ---
